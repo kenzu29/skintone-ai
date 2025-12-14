@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Skin Tone AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Library TensorFlow.js dan Teachable Machine Image -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 20px; }
+    #webcam-container canvas { max-width: 100%; border-radius: 10px; }
+    #btnStart { padding: 10px 20px; font-size: 16px; margin-bottom: 20px; }
+    #result-box { margin-top: 20px; font-size: 18px; }
+    .label-title { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Skin Tone AI</h2>
+
+  <button id="btnStart" onclick="init()">Mulai Kamera</button>
+
+  <div id="webcam-container"></div>
+
+  <div id="result-box">
+    <p class="label-title">Skin Tone: <span id="skinTone">-</span></p>
+    <p class="label-title">Rekomendasi Warna: <span id="recommendation">-</span></p>
+  </div>
+
+  <script>
+    // GANTI bagian ini dengan URL model Teachable Machine kamu
+    const MODEL_URL = "https://teachablemachine.withgoogle.com/models/NtaXuf-Dl/"; // 
+
+    let model, webcam, maxPredictions;
+
+    async function init() {
+      const modelURL = MODEL_URL + "model.json";
+      const metadataURL = MODEL_URL + "metadata.json";
+
+      // load model
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+
+      // setup webcam
+      const flip = true;
+      webcam = new tmImage.Webcam(320, 240, flip);
+      await webcam.setup();
+      await webcam.play();
+      window.requestAnimationFrame(loop);
+
+      // tampilkan pada halaman
+      document.getElementById("webcam-container").innerHTML = "";
+      document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+      document.getElementById("btnStart").disabled = true;
+      document.getElementById("btnStart").innerText = "Kamera Aktif";
+    }
+
+    async function loop() {
+      webcam.update();
+      await predict();
+      window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+      const prediction = await model.predict(webcam.canvas);
+
+      // cari kelas dengan probabilitas terbesar
+      let best = prediction[0];
+      for (let i = 1; i < prediction.length; i++) {
+        if (prediction[i].probability > best.probability) {
+          best = prediction[i];
+        }
+      }
+
+      const skinToneName = best.className;  // nama kelas di Teachable Machine
+      document.getElementById("skinTone").innerText = skinToneName;
+
+      // aturan rekomendasi warna outfit
+      let rec = "";
+      if (skinToneName === "Light") {
+        rec = "Putih, pastel, navy";
+      } else if (skinToneName === "Medium Light") {
+        rec = "Beige, olive, soft blue";
+      } else if (skinToneName === "Medium Dark") {
+        rec = "Mustard, maroon, emerald";
+      } else if (skinToneName === "Dark") {
+        rec = "Putih, royal blue, kuning";
+      } else {
+        rec = "Belum ada rekomendasi.";
+      }
+
+      document.getElementById("recommendation").innerText = rec;
+    }
+  </script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+</body>
+</html>
